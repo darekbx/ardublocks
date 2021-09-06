@@ -5,6 +5,10 @@
 #define BOARD_WIDTH 10
 #define BOARD_HEIGHT 15
 
+#define ONE_LINE_POINTS 40
+#define TWO_LINES_POINTS 100
+#define THREE_LINE_POINTS 300
+
 class Game {
 
   private:
@@ -54,6 +58,10 @@ class Game {
     bool isGameRunning = false;
     bool isCShapeMoving = true;
     bool isGameEnd = false;
+    bool isPaused = false;
+
+    int nextShapeIndex = -1;
+    int points = 0;
     
     void rotateArray(byte input[3][3], byte output[3][3]);
     byte shapeMaxX();
@@ -63,19 +71,23 @@ class Game {
     void newShape();
     bool canMoveLeft();
     bool canMoveRight();
-    void dropLines();
+    void prepareShape(byte destination[3][3], byte index);
 
   public:
     void startGame();
+    void pauseGame();
     bool getIsGameEnd();
     bool getIsGameRunning();
     void collisionDetection();
+    int getPoints();
+    void dropLines();
     void addShape();
     void moveLeft();
     void moveRight();
     void moveDown();
     void drawShape(Arduboy2 arduboy);
     void drawBoard(Arduboy2 arduboy);
+    void drawNext(Arduboy2 arduboy);
     void rotateCurrentShape();
     // Fill board with "zeros"
     void fillBoard();

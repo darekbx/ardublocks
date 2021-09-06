@@ -38,13 +38,17 @@ void endGameScreen() {
 }
 
 void gameScreen() {
-  if (arduboy.everyXFrames(4)) {
+  if (arduboy.everyXFrames(3)) {
     if (arduboy.pressed(LEFT_BUTTON)) {
       game.moveLeft();
     } else if (arduboy.pressed(RIGHT_BUTTON)) {
       game.moveRight();
     } else if (arduboy.pressed(DOWN_BUTTON)) {
       game.moveDown();
+    } else if (arduboy.pressed(UP_BUTTON)) {
+      game.pauseGame();
+    } else if (arduboy.pressed(A_BUTTON)) {
+      // TODO exit to menu with confirmation
     } else if (arduboy.pressed(B_BUTTON)) {
       game.rotateCurrentShape();
     }
@@ -53,11 +57,17 @@ void gameScreen() {
   if (arduboy.everyXFrames(gameSpeed)) {
     game.moveDown();
   }
-
+  
   game.collisionDetection();
+  game.dropLines();
   game.drawShape(arduboy);
-
   game.drawBoard(arduboy);
+  game.drawNext(arduboy);
+  
+  arduboy.setCursor(0, 0);
+  arduboy.print("Points");
+  arduboy.setCursor(0, 10);
+  arduboy.print(game.getPoints());
 }
 
 void startGameScreen() {
