@@ -5,22 +5,45 @@
 #define LEFT_OFFSET 44
 #define BOARD_WIDTH 10
 #define BOARD_HEIGHT 15
+#define TOP_SCORE_ADDRESS 0
+
+void Game::resetGame() {
+  isGameEnd = false;
+  isGameRunning = false;
+  score = 0;
+  level = 1;
+}
 
 void Game::startGame() {
+  fillBoard();
+  addShape();
   nextShapeIndex = random(0, 7);
   isGameRunning = true;
+  isGameEnd = false;
 }
 
 bool Game::getIsGameRunning() {
   return isGameRunning;
 }
 
+void Game::setIsGameRunning(bool isRunning) {
+  isGameRunning = isRunning;
+}
+
 bool Game::getIsGameEnd() {
   return isGameEnd;
 }
 
-int Game::getPoints() {
-  return points;
+int Game::getScore() {
+  return score;
+}
+
+int Game::getBestScore() {
+  return readValue(TOP_SCORE_ADDRESS);
+}
+
+int Game::getLevel() {
+  return level;
 }
 
 void Game::pauseGame() {
@@ -52,34 +75,51 @@ void Game::prepareShape(byte destination[3][3], byte index) {
 }
 
 void Game::dropLines() {
+  bool wasLineDropped = false;
   byte droppedLinesCount = 0;
-  for (int y = BOARD_HEIGHT - 1; y >= 0; y--) {
-    // Check for filled lines
-    byte filledCount = 0;
-    for (int x = 0; x < BOARD_WIDTH; x++) {
-      if (board[y][x] == 1) {
-        filledCount++;
-      }
-    }
-    // Found filled line
-    if (filledCount == BOARD_WIDTH) {
-      // Drop line
+  
+  do {
+    wasLineDropped = false;
+    for (int y = BOARD_HEIGHT - 1; y >= 0; y--) {
+      // Check for filled lines
+      byte filledCount = 0;
       for (int x = 0; x < BOARD_WIDTH; x++) {
-        board[y][x] = 0;
-      }
-      // Move top blocks down
-      for (int yi = y - 1; yi >= 0; yi--) {
-        for (int x = 0; x < BOARD_WIDTH; x++) {   
-          board[yi + 1][x] = board[yi][x];
+        if (board[y][x] == 1) {
+          filledCount++;
         }
       }
-      droppedLinesCount++;
+      // Found filled line
+      if (filledCount == BOARD_WIDTH) {
+        // Drop line
+        for (int x = 0; x < BOARD_WIDTH; x++) {
+          board[y][x] = 0;
+        }
+        // Move top blocks down
+        for (int yi = y - 1; yi >= 0; yi--) {
+          for (int x = 0; x < BOARD_WIDTH; x++) {   
+            board[yi + 1][x] = board[yi][x];
+          }
+        }
+        droppedLinesCount++;
+        wasLineDropped = true;
+        break;
+      }
     }
+  } while (wasLineDropped);
+  
+  if (droppedLinesCount > 0) {
+    switch (droppedLinesCount) {
+      case 1: score += ONE_LINE_POINTS; break;
+      case 2: score += TWO_LINES_POINTS; break;
+      case 3: score += THREE_LINE_POINTS; break;
+    }
+    increaseLevel();
   }
-  switch (droppedLinesCount) {
-    case 1: points += ONE_LINE_POINTS; break;
-    case 2: points += TWO_LINES_POINTS; break;
-    case 3: points += THREE_LINE_POINTS; break;
+}
+
+void Game::increaseLevel() {
+  if (score > 0 && score >= level * 1000) {
+    level++;
   }
 }
 
@@ -89,8 +129,11 @@ void Game::collisionDetection() {
       if (cShapeY + y + 1 > BOARD_HEIGHT) continue;
       if (cShape[y][x] == 1 && board[cShapeY + y + 1][cShapeX + x] == 1) {
 
-        if (cShapeY == 0 /* TODO: change dummy end game */) {
+        if (cShapeY == 0) {
           isGameEnd = true;
+          if (score > getBestScore()) {
+            saveValue(TOP_SCORE_ADDRESS, score);
+          }
           return;
         }
  
@@ -120,6 +163,22 @@ bool Game::canMoveRight() {
     }
   }
   return true;
+}
+
+bool Game::canRotate() {
+  byte rotated[3][3];
+  rotateArray(cShape, rotated);
+  
+  for (byte y = 0; y < 3; y++) {
+    for (byte x = 0; x < 3; x++) {
+      if (cShapeY + y + 1 > BOARD_HEIGHT) continue;
+      if (rotated[y][x] == 1 && board[cShapeY + y + 1][cShapeX + x] == 1) {
+        return false;
+      }
+    }
+  }
+  
+  return true; 
 }
 
 void Game::persistShape() {
@@ -206,7 +265,7 @@ byte Game::shapeMaxY() {
 
 void Game::drawNext(Arduboy2 arduboy) {
   
-  arduboy.setCursor(100, 11);
+  arduboy.setCursor(100, 10);
   arduboy.print("Next");
   arduboy.drawRoundRect(100, 21, 21, 21, 2);
 
@@ -286,15 +345,17 @@ void Game::rotateCurrentShape() {
   if (isPaused) { 
     return;
   }
-  byte rotated[3][3];
-  rotateArray(cShape, rotated);
-  memcpy(cShape, rotated, sizeof(rotated));
-
-  // Fix shape position after rotate
-  if (cShapeX + shapeMaxX() > BOARD_WIDTH) {
-    cShapeX -= 1;
-  } else if (cShapeX - shapeMinX() < 0) {
-    cShapeX += 1;
+  if (canRotate()) {
+    byte rotated[3][3];
+    rotateArray(cShape, rotated);
+    memcpy(cShape, rotated, sizeof(rotated));
+  
+    // Fix shape position after rotate
+    if (cShapeX + shapeMaxX() > BOARD_WIDTH) {
+      cShapeX -= 1;
+    } else if (cShapeX - shapeMinX() < 0) {
+      cShapeX += 1;
+    }
   }
 }
 
@@ -313,4 +374,47 @@ void Game::fillBoard() {
       board[y][x] = 0;
     }
   }
+}
+
+void Game::drawStartScreen(Arduboy2 arduboy) {
+
+  arduboy.setTextSize(2);
+  arduboy.setCursor(28, 18);
+  arduboy.print("Blocks"); 
+  
+  arduboy.setTextSize(1);
+  arduboy.setCursor(10, 48);
+  arduboy.print("Press 'B' to start"); 
+
+  for (byte y = 0; y < 15; y++) {
+    byte yPos = y * 4;
+    arduboy.drawRect(0, yPos, 3, 3);
+    arduboy.drawRect(124, yPos, 3, 3);
+  }
+  
+  for (byte x = 0; x < 32; x++) {
+    byte xPos = x * 4;
+    arduboy.drawRect(xPos, 0, 3, 3);
+    arduboy.drawRect(xPos, 60, 3, 3);
+  }
+}
+
+void Game::clearMemory() {
+  byte memorySize = 2;
+  for (byte i = 0; i <= memorySize; i++) {
+    EEPROM.write(i, 0);
+  }
+}
+
+void Game::saveValue(int address, int number) {
+  byte byte1 = number >> 8;
+  byte byte2 = number & 0xFF;
+  EEPROM.write(address, byte1);
+  EEPROM.write(address + 1, byte2);
+}
+
+int Game::readValue(int address) {
+  byte byte1 = EEPROM.read(address);
+  byte byte2 = EEPROM.read(address + 1);
+  return (byte1 << 8) + byte2;
 }

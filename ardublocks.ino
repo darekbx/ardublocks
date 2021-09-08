@@ -1,28 +1,37 @@
 #include <Arduboy2.h>
 #include "Game.h"
 
+#define CLEAR_MEMORY false
+
 Arduboy2 arduboy;
 Game game;
 
-byte gameSpeed = 20;
+byte gameSpeed = 16;
+boolean isConfirmDialogShown = false;
 
 void setup() {
   arduboy.begin();
   arduboy.setFrameRate(30); 
   arduboy.initRandomSeed();
 
-  game.fillBoard();
-  game.addShape();
+  if (CLEAR_MEMORY) {
+    game.clearMemory();
+  }
 }
 
 void loop() {
   if (!(arduboy.nextFrame()))
     return;
 
+  arduboy.pollButtons();
   arduboy.clear();
 
   if (game.getIsGameEnd()) {
-    endGameScreen();
+    endGameDialog();
+    handleEndGameDialogButtons();
+  } else if (isConfirmDialogShown) {
+    drawExitDialog();
+    handleExitDialogButtons();
   } else if (game.getIsGameRunning()) {
     gameScreen();
   } else {
@@ -32,29 +41,30 @@ void loop() {
   arduboy.display();
 }
 
-void endGameScreen() {
-  arduboy.setCursor(2, 2);
-  arduboy.print("Game End"); 
-}
-
 void gameScreen() {
-  if (arduboy.everyXFrames(3)) {
-    if (arduboy.pressed(LEFT_BUTTON)) {
+  
+  if (arduboy.pressed(LEFT_BUTTON)) {
+    if (arduboy.everyXFrames(3)) {
       game.moveLeft();
-    } else if (arduboy.pressed(RIGHT_BUTTON)) {
-      game.moveRight();
-    } else if (arduboy.pressed(DOWN_BUTTON)) {
-      game.moveDown();
-    } else if (arduboy.pressed(UP_BUTTON)) {
-      game.pauseGame();
-    } else if (arduboy.pressed(A_BUTTON)) {
-      // TODO exit to menu with confirmation
-    } else if (arduboy.pressed(B_BUTTON)) {
-      game.rotateCurrentShape();
     }
+  } else if (arduboy.pressed(RIGHT_BUTTON)) {
+    if (arduboy.everyXFrames(3)) {
+      game.moveRight();
+    }
+  } else if (arduboy.pressed(DOWN_BUTTON)) {
+    if (arduboy.everyXFrames(3)) {
+      game.moveDown();
+    }
+  } else if (arduboy.justPressed(UP_BUTTON)) {
+    game.pauseGame();
+  } else if (arduboy.justPressed(A_BUTTON)) {
+    isConfirmDialogShown = true;
+    game.pauseGame();
+  } else if (arduboy.justPressed(B_BUTTON)) {
+    game.rotateCurrentShape();
   }
   
-  if (arduboy.everyXFrames(gameSpeed)) {
+  if (arduboy.everyXFrames(gameSpeed - game.getLevel())) {
     game.moveDown();
   }
   
@@ -64,19 +74,88 @@ void gameScreen() {
   game.drawBoard(arduboy);
   game.drawNext(arduboy);
   
+  displayPoints();
+  displayLevel();
+  displayBestScore();
+}
+
+void displayPoints() {
   arduboy.setCursor(0, 0);
   arduboy.print("Points");
   arduboy.setCursor(0, 10);
-  arduboy.print(game.getPoints());
+  arduboy.print(game.getScore());
+}
+
+void displayLevel() {
+  arduboy.setCursor(0, 22);
+  arduboy.print("Level");
+  arduboy.setCursor(0, 32);
+  arduboy.print(game.getLevel());
+}
+
+void displayBestScore() {
+  arduboy.setCursor(0, 44);
+  arduboy.print("Best");
+  arduboy.setCursor(0, 54);
+  arduboy.print(game.getBestScore());
+}
+
+void endGameDialog() {
+  drawDialogBase();
+  
+  arduboy.setCursor(9, 11);
+  arduboy.print("Game end!");
+  arduboy.setCursor(9, 22);
+  arduboy.print("Your score: ");
+  arduboy.setCursor(78, 22);
+  arduboy.print(game.getScore() );
+  arduboy.setCursor(92, 46);
+  arduboy.print("OK(B)");
+  
+  arduboy.setTextBackground(BLACK);
+  arduboy.setTextColor(WHITE);
+}
+
+void handleEndGameDialogButtons() {
+  if (arduboy.justPressed(B_BUTTON)) {
+    game.resetGame();
+  }
 }
 
 void startGameScreen() {
-  if (arduboy.everyXFrames(4)) {
-    if (arduboy.pressed(A_BUTTON)) {
-      game.startGame();
-    }
+  if (arduboy.justPressed(B_BUTTON)) {
+    game.startGame();
   }
+
+  game.drawStartScreen(arduboy);
+}
+
+void handleExitDialogButtons() {
+  // A button is exiting to menu
+  if (arduboy.justPressed(A_BUTTON)) {
+    isConfirmDialogShown = false;
+    game.setIsGameRunning(false);
+  } else if (arduboy.justPressed(B_BUTTON)) {
+    isConfirmDialogShown = false;
+    game.pauseGame();
+  }
+}
+
+void drawExitDialog() {
+  drawDialogBase();
   
-  arduboy.setCursor(6, 25);
-  arduboy.print("Press 'A' to start"); 
+  arduboy.setCursor(9, 11);
+  arduboy.print("Exit game?");
+  arduboy.setCursor(38, 46);
+  arduboy.print("Yes(A)   No(B)");
+  
+  arduboy.setTextBackground(BLACK);
+  arduboy.setTextColor(WHITE);
+}
+
+void drawDialogBase() {
+  arduboy.fillRoundRect(2, 4, 124, 56, 4);
+  arduboy.setCursor(7, 9);
+  arduboy.setTextColor(BLACK);
+  arduboy.setTextBackground(WHITE);
 }

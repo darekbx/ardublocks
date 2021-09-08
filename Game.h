@@ -61,7 +61,8 @@ class Game {
     bool isPaused = false;
 
     int nextShapeIndex = -1;
-    int points = 0;
+    int score = 0;
+    int level = 1;
     
     void rotateArray(byte input[3][3], byte output[3][3]);
     byte shapeMaxX();
@@ -71,15 +72,22 @@ class Game {
     void newShape();
     bool canMoveLeft();
     bool canMoveRight();
+    bool canRotate();
     void prepareShape(byte destination[3][3], byte index);
+    void increaseLevel();
+    void saveValue(int address, int number);
+    int readValue(int address);
 
   public:
+    void resetGame();
     void startGame();
     void pauseGame();
     bool getIsGameEnd();
     bool getIsGameRunning();
+    void setIsGameRunning(bool isRunning);
     void collisionDetection();
-    int getPoints();
+    int getScore();
+    int getLevel();
     void dropLines();
     void addShape();
     void moveLeft();
@@ -88,7 +96,10 @@ class Game {
     void drawShape(Arduboy2 arduboy);
     void drawBoard(Arduboy2 arduboy);
     void drawNext(Arduboy2 arduboy);
+    void drawStartScreen(Arduboy2 arduboy);
     void rotateCurrentShape();
     // Fill board with "zeros"
     void fillBoard();
+    void clearMemory();
+    int getBestScore();
 };
