@@ -72,6 +72,7 @@ class Game {
     void newShape();
     bool canMoveLeft();
     bool canMoveRight();
+    bool canMoveDown();
     bool canRotate();
     void prepareShape(byte destination[3][3], byte index);
     void increaseLevel();

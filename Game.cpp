@@ -165,6 +165,17 @@ bool Game::canMoveRight() {
   return true;
 }
 
+bool Game::canMoveDown() {
+  for (int y = 0; y < 3; y++) {
+    for (int x = 0; x < 3; x++) {
+      if (cShape[y][x] == 1 && board[cShapeY + y + 1][cShapeX + x] == 1) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
 bool Game::canRotate() {
   byte rotated[3][3];
   rotateArray(cShape, rotated);
@@ -220,7 +231,7 @@ void Game::moveDown() {
   if (isPaused) {
     return;
   }
-  if (cShapeY + shapeMaxY() < BOARD_HEIGHT) {
+  if (canMoveDown() && cShapeY + shapeMaxY() < BOARD_HEIGHT) {
     cShapeY += 1;
   } else {
     newShape();

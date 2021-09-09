@@ -97,7 +97,11 @@ void displayBestScore() {
   arduboy.setCursor(0, 44);
   arduboy.print("Best");
   arduboy.setCursor(0, 54);
-  arduboy.print(game.getBestScore());
+  if (game.getScore() < game.getBestScore()) {
+    arduboy.print(game.getBestScore());
+  } else {
+    arduboy.print(game.getScore());
+  }
 }
 
 void endGameDialog() {
